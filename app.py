@@ -1,34 +1,40 @@
 import streamlit as st
 import pandas as pd
+import matplotlib.pyplot as plt
 
-# Load data
+# Load the data
 @st.cache
 def load_data():
-    return pd.read_csv('brooklyn_bridge_pedestrians.csv')
+    df = pd.read_csv('brooklyn_bridge_pedestrians.csv')
+    df['hour_beginning'] = pd.to_datetime(df['hour_beginning'])
+    df.set_index('hour_beginning', inplace=True)
+    return df
 
-data = load_data()
+df = load_data()
 
-# Title and subtitle
-st.title('Brooklyn Bridge Pedestrian Traffic Dashboard')
-st.subheader('Explore pedestrian counts over time')
+# Streamlit app layout
+st.title('Brooklyn Bridge Pedestrian Dashboard')
 
-# Radio widget for selecting view
-view_option = st.radio('Choose view:', ['Hourly', 'Daily', 'Weekly'])
-
-# Resampling logic based on the view
-if view_option == 'Hourly':
-    resampled_data = data.resample('H').sum()
-elif view_option == 'Daily':
-    resampled_data = data.resample('D').sum()
+# Resample data for different views
+view = st.selectbox('Select View', ['Hourly', 'Daily', 'Weekly'])
+if view == 'Hourly':
+    resampled_data = df.resample('H').sum()
+elif view == 'Daily':
+    resampled_data = df.resample('D').sum()
 else:
-    resampled_data = data.resample('W').sum()
+    resampled_data = df.resample('W').sum()
 
-# Line chart of pedestrian counts
-st.line_chart(resampled_data['counts'])
+# Display metrics
+st.metric(label='Total Pedestrians', value=resampled_data['pedestrians'].sum())
+st.metric(label='Average Pedestrians', value=resampled_data['pedestrians'].mean())
 
-# Metrics for total and average counts
-total_counts = resampled_data['counts'].sum()
-average_counts = resampled_data['counts'].mean()
-
-st.metric('Total Pedestrian Counts', total_counts)
-st.metric('Average Pedestrian Counts', average_counts)
+# Plotting
+plt.figure(figsize=(10, 5))
+plt.plot(resampled_data.index, resampled_data['pedestrians'], label='Pedestrians', color='blue')
+plt.title('Pedestrian Counts Over Time')
+plt.xlabel('Time')
+plt.ylabel('Number of Pedestrians')
+plt.xticks(rotation=45)
+plt.legend()
+plt.grid(True)
+st.pyplot(plt)
